@@ -1,6 +1,7 @@
 config BR2_PACKAGE_HOSTBOOT_BINARIES
         bool "hostboot_binaries"
         default y if (BR2_OPENPOWER_PLATFORM)
+        depends on !BR2_NO_BLOBS
         help
             Project to stage hostboot binary images
 

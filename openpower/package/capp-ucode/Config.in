@@ -1,10 +1,12 @@
 config BR2_PACKAGE_CAPP_UCODE
         bool "capp_capp"
         default y if (BR2_OPENPOWER_PLATFORM)
+        depends on !BR2_NO_BLOBS
         help
             Microcode for CAPP hardware
 
 config BR2_CAPP_UCODE_BIN_FILENAME
         string "Name of CAPP UCODE image file"
+        depends on !BR2_NO_BLOBS
         help
             String used to define name of the CAPP UCODE binary image file

@@ -22,6 +22,12 @@ NIMBUS_RING_OVERLAYS_FILE=p9n.hw.overlays.bin
 #with ".bin"
 BIN_FILENAME ?= $(if $(BR2_OPENPOWER_POWER9),$(subst hdr.bin.ecc,bin,$(BR2_HOSTBOOT_BINARY_WINK_FILENAME)),$(BR2_HOSTBOOT_BINARY_WINK_FILENAME))
 
+ifeq ($(BR2_HOSTBOOT_BINARIES_RINGS_ONLY),y)
+define HOSTBOOT_BINARIES_INSTALL_IMAGES_CMDS
+     $(INSTALL) -D $(@D)/$(NIMBUS_RING_FILE)  $(STAGING_DIR)/hostboot_binaries/
+     $(INSTALL) -D $(@D)/$(NIMBUS_RING_OVERLAYS_FILE)  $(STAGING_DIR)/hostboot_binaries/
+endef
+else
 define HOSTBOOT_BINARIES_INSTALL_IMAGES_CMDS
      $(INSTALL) -D $(@D)/cvpd.bin  $(STAGING_DIR)/hostboot_binaries/cvpd.bin
      $(INSTALL) -D $(@D)/$(BIN_FILENAME) $(STAGING_DIR)/hostboot_binaries/
@@ -32,5 +38,6 @@ define HOSTBOOT_BINARIES_INSTALL_IMAGES_CMDS
      $(INSTALL) -D $(@D)/$(NIMBUS_RING_OVERLAYS_FILE)  $(STAGING_DIR)/hostboot_binaries/
      $(INSTALL) -D $(@D)/$(BR2_HOSTBOOT_BINARY_IONV_FILENAME)  $(STAGING_DIR)/hostboot_binaries/
 endef
+endif
 
 $(eval $(generic-package))

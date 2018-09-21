@@ -9,7 +9,13 @@ OPENPOWER_PNOR_SITE ?= $(call github,open-power,pnor,$(OPENPOWER_PNOR_VERSION))
 
 OPENPOWER_PNOR_LICENSE = Apache-2.0
 OPENPOWER_PNOR_LICENSE_FILES = LICENSE
-OPENPOWER_PNOR_DEPENDENCIES = hostboot-binaries machine-xml skiboot host-openpower-ffs capp-ucode
+OPENPOWER_PNOR_DEPENDENCIES = machine-xml skiboot host-openpower-ffs
+
+ifeq ($(BR2_NO_BLOBS),n)
+OPENPOWER_PNOR_DEPENDENCIES += hostboot-binaries capp-ucode
+else
+OPENPOWER_PNOR_DEPENDENCIES += hostboot occ
+endif
 
 ifeq ($(BR2_OPENPOWER_POWER9),y)
 OPENPOWER_PNOR_DEPENDENCIES += hcode
@@ -103,6 +109,12 @@ else
     OCC_BIN_FILENAME=$(BR2_OCC_BIN_FILENAME)
 endif
 
+ifeq ($(BR2_NO_BLOBS),n)
+    CAPP_FLAG="-capp_binary_filename $(BINARIES_DIR)/$(BR2_CAPP_UCODE_BIN_FILENAME)"
+else
+    CAPP_FLAG=""
+endif
+
 define OPENPOWER_PNOR_INSTALL_IMAGES_CMDS
         mkdir -p $(OPENPOWER_PNOR_SCRATCH_DIR)
 
@@ -120,7 +132,7 @@ define OPENPOWER_PNOR_INSTALL_IMAGES_CMDS
             -sbec_binary_filename $(BR2_HOSTBOOT_BINARY_SBEC_FILENAME) \
             -wink_binary_filename $(BR2_HOSTBOOT_BINARY_WINK_FILENAME) \
             -occ_binary_filename $(OCC_STAGING_DIR)/$(OCC_BIN_FILENAME) \
-            -capp_binary_filename $(BINARIES_DIR)/$(BR2_CAPP_UCODE_BIN_FILENAME) \
+            $(CAPP_FLAG) \
             -ima_catalog_binary_filename $(BINARIES_DIR)/$(BR2_IMA_CATALOG_FILENAME) \
             -openpower_version_filename $(OPENPOWER_PNOR_VERSION_FILE) \
             -wof_binary_filename $(OPENPOWER_MRW_SCRATCH_DIR)/$(BR2_WOFDATA_FILENAME) \

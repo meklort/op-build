@@ -1,7 +1,6 @@
 config BR2_PACKAGE_HOSTBOOT_BINARIES
         bool "hostboot_binaries"
         default y if (BR2_OPENPOWER_PLATFORM)
-        depends on !BR2_NO_BLOBS
         help
             Project to stage hostboot binary images
 
@@ -28,5 +27,11 @@ config BR2_HOSTBOOT_BINARIES_VERSION
 	default "hw090518a.930" if BR2_HOSTBOOT_BINARIES_LATEST_VERSION
 	default BR2_HOSTBOOT_BINARIES_CUSTOM_VERSION_VALUE \
 		if BR2_HOSTBOOT_BINARIES_CUSTOM_VERSION
+
+config BR2_HOSTBOOT_BINARIES_RINGS_ONLY
+	bool "Only install ring data (experimental)"
+	default y if BR2_NO_BLOBS
+	help
+	    Only install the ring and overlay data files.
 
 endif

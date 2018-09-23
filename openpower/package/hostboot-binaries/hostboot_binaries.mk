@@ -24,8 +24,9 @@ BIN_FILENAME ?= $(if $(BR2_OPENPOWER_POWER9),$(subst hdr.bin.ecc,bin,$(BR2_HOSTB
 
 ifeq ($(BR2_HOSTBOOT_BINARIES_RINGS_ONLY),y)
 define HOSTBOOT_BINARIES_INSTALL_IMAGES_CMDS
-     $(INSTALL) -D $(@D)/$(NIMBUS_RING_FILE)  $(STAGING_DIR)/hostboot_binaries/
+     $(INSTALL) -D $(@D)/$(NIMBUS_RING_FILE)  $(STAGING_DIR)/hostboot_binaries/$(NIMBUS_RING_FILE)
      $(INSTALL) -D $(@D)/$(NIMBUS_RING_OVERLAYS_FILE)  $(STAGING_DIR)/hostboot_binaries/
+     $(INSTALL) /dev/null $(STAGING_DIR)/hostboot_binaries/$(BR2_HOSTBOOT_BINARY_IONV_FILENAME)
 endef
 else
 define HOSTBOOT_BINARIES_INSTALL_IMAGES_CMDS

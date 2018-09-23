@@ -110,9 +110,9 @@ else
 endif
 
 ifeq ($(BR2_NO_BLOBS),n)
-    CAPP_FLAG="-capp_binary_filename $(BINARIES_DIR)/$(BR2_CAPP_UCODE_BIN_FILENAME)"
+    CAPP_FLAG=-capp_binary_filename $(BINARIES_DIR)/$(BR2_CAPP_UCODE_BIN_FILENAME)
 else
-    CAPP_FLAG=""
+    CAPP_FLAG=
 endif
 
 define OPENPOWER_PNOR_INSTALL_IMAGES_CMDS

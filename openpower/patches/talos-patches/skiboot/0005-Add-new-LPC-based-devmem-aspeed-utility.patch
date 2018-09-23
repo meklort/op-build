@@ -1,0 +1,259 @@
+From 2586b660329110ac81f5096ccd1d4c4e44aba8c4 Mon Sep 17 00:00:00 2001
+From: Timothy Pearson <tpearson@raptorengineering.com>
+Date: Fri, 20 Apr 2018 04:01:08 -0500
+Subject: [PATCH 5/8] Add new LPC-based devmem-aspeed utility
+
+---
+ external/lpc/Makefile        |   7 +-
+ external/lpc/devmem-aspeed.c | 223 +++++++++++++++++++++++++++++++++++++++++++
+ 2 files changed, 228 insertions(+), 2 deletions(-)
+ create mode 100644 external/lpc/devmem-aspeed.c
+
+diff --git a/external/lpc/Makefile b/external/lpc/Makefile
+index 81e0b09e..f6e8b818 100644
+--- a/external/lpc/Makefile
++++ b/external/lpc/Makefile
+@@ -1,6 +1,9 @@
+-all: lpc
++all: lpc devmem-aspeed
+ 
+ lpc: lpc.c
+ 	$(CC) -o $@ $^
+ 
+-clean: rm -rf *.[od] lpc
++devmem-aspeed: devmem-aspeed.c
++	$(CC) -o $@ $^
++
++clean: rm -rf *.[od] lpc devmem-aspeed
+diff --git a/external/lpc/devmem-aspeed.c b/external/lpc/devmem-aspeed.c
+new file mode 100644
+index 00000000..b5af67e6
+--- /dev/null
++++ b/external/lpc/devmem-aspeed.c
+@@ -0,0 +1,223 @@
++/* Copyright 2014-2016 IBM Corp.
++ * Copyright 2018 Raptor Engineering, LLC
++ *
++ * Licensed under the Apache License, Version 2.0 (the "License");
++ * you may not use this file except in compliance with the License.
++ * You may obtain a copy of the License at
++ *
++ *	http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
++ * implied.
++ * See the License for the specific language governing permissions and
++ * imitations under the License.
++ */
++
++#include <stdio.h>
++#include <stdlib.h>
++#include <string.h>
++#include <ctype.h>
++#include <fcntl.h>
++#include <sys/mman.h>
++#include <sys/types.h>
++#include <sys/stat.h>
++#include <unistd.h>
++#include <byteswap.h>
++#include <stdint.h>
++#include <stdbool.h>
++#include <getopt.h>
++#include <limits.h>
++#include <arpa/inet.h>
++#include <assert.h>
++#include <endian.h>
++#include <byteswap.h>
++
++#define SYSFS_PREFIX "/sys/kernel/debug/powerpc/lpc"
++
++int fd;
++
++enum {
++	BMC_SIO_DEV_NONE	= -1,
++	BMC_SIO_DEV_UART1	= 2,
++	BMC_SIO_DEV_UART2	= 3,
++	BMC_SIO_DEV_SWC		= 4,
++	BMC_SIO_DEV_KBC		= 5,
++	BMC_SIO_DEV_P80		= 7,
++	BMC_SIO_DEV_UART3	= 0xb,
++	BMC_SIO_DEV_UART4	= 0xc,
++	BMC_SIO_DEV_LPC2AHB	= 0xd,
++	BMC_SIO_DEV_MBOX	= 0xe,
++};
++
++static int bmc_sio_cur_dev = BMC_SIO_DEV_NONE;
++
++void lpc_outb(uint8_t val, uint32_t addr)
++{
++	ssize_t rc;
++
++	lseek(fd, addr, SEEK_SET);
++	val &= 0xff;
++	rc = write(fd, &val, 1);
++	if (rc != 1) {
++		perror("Failed to write to LPC");
++		exit(1);
++	}
++}
++
++static uint8_t lpc_inb(uint32_t addr)
++{
++	uint8_t val;
++	ssize_t rc;
++
++	rc = read(fd, &val, 1);
++	if (rc != 1) {
++		perror("Failed to read from LPC");
++		exit(1);
++	}
++
++	return val;
++}
++
++/*
++ * SuperIO indirect accesses
++ */
++static void bmc_sio_outb(uint8_t val, uint8_t reg)
++{
++	lpc_outb(reg, 0x2e);
++	lpc_outb(val, 0x2f);
++}
++
++static uint8_t bmc_sio_inb(uint8_t reg)
++{
++	lpc_outb(reg, 0x2e);
++	return lpc_inb(0x2f);
++}
++
++static void bmc_sio_get(int dev)
++{
++	if (bmc_sio_cur_dev == dev || dev < 0)
++		return;
++
++	if (bmc_sio_cur_dev == BMC_SIO_DEV_NONE) {
++		/* Send SuperIO password */
++		lpc_outb(0xa5, 0x2e);
++		lpc_outb(0xa5, 0x2e);
++	}
++
++	/* Select logical dev */
++	bmc_sio_outb(dev, 0x07);
++
++	bmc_sio_cur_dev = dev;
++}
++
++static void bmc_sio_put(bool lock_sio)
++{
++	if (lock_sio) {
++		/* Re-lock SuperIO */
++		lpc_outb(0xaa, 0x2e);
++
++		bmc_sio_cur_dev = BMC_SIO_DEV_NONE;
++	}
++}
++
++/*
++ * AHB accesses via iLPC->AHB in SuperIO. Works on byteswapped
++ * values (ie. Little Endian registers)
++ */
++static void bmc_sio_ahb_prep(uint32_t reg, uint8_t type)
++{
++	/* Enable iLPC->AHB */
++	bmc_sio_outb(0x01, 0x30);
++
++	/* Address */
++	bmc_sio_outb((reg >> 24) & 0xff, 0xf0);
++	bmc_sio_outb((reg >> 16) & 0xff, 0xf1);
++	bmc_sio_outb((reg >>  8) & 0xff, 0xf2);
++	bmc_sio_outb((reg      ) & 0xff, 0xf3);
++
++	/* bytes cycle type */
++	bmc_sio_outb(type, 0xf8);
++}
++
++static void bmc_sio_ahb_writel(uint32_t val, uint32_t reg)
++{
++	bmc_sio_get(BMC_SIO_DEV_LPC2AHB);
++
++	bmc_sio_ahb_prep(reg, 2);
++
++	/* Write data */
++	bmc_sio_outb(val >> 24, 0xf4);
++	bmc_sio_outb(val >> 16, 0xf5);
++	bmc_sio_outb(val >>  8, 0xf6);
++	bmc_sio_outb(val      , 0xf7);
++
++	/* Trigger */
++	bmc_sio_outb(0xcf, 0xfe);
++
++	bmc_sio_put(false);
++}
++
++static uint32_t bmc_sio_ahb_readl(uint32_t reg)
++{
++	uint32_t val = 0;
++
++	bmc_sio_get(BMC_SIO_DEV_LPC2AHB);
++
++	bmc_sio_ahb_prep(reg, 2);
++
++	/* Trigger */
++	bmc_sio_inb(0xfe);
++
++	/* Read results */
++	val = (val << 8) | bmc_sio_inb(0xf4);
++	val = (val << 8) | bmc_sio_inb(0xf5);
++	val = (val << 8) | bmc_sio_inb(0xf6);
++	val = (val << 8) | bmc_sio_inb(0xf7);
++
++	bmc_sio_put(false);
++
++	return val;
++}
++
++int main(int argc, char *argv[])
++{
++	char		path[256];
++	char		*eq;
++	int		size = 4;
++	bool		do_write = false;
++	bool		big_endian = false;
++	uint32_t	addr, val;
++	ssize_t		rc;
++
++	if (argc < 3) {
++		printf("Usage: %s <space> <addr>[=value]\n", argv[0]);
++		return 0;
++	}
++
++	eq = strchr(argv[2], '=');
++	if (eq) {
++		do_write = true;
++		val = strtoul(eq + 1, NULL, 0);
++		*eq = 0;
++	}
++	addr = strtoul(argv[2], NULL, 0);
++
++	memset(path, 0, sizeof(path));
++	snprintf(path, 255, SYSFS_PREFIX "/%s", argv[1]);
++	fd = open(path, O_RDWR);
++	if (fd < 0) {
++		perror("Failed to open sysfs file");
++		exit(1);
++	}
++
++	lseek(fd, addr, SEEK_SET);
++	if (do_write)  {
++		bmc_sio_ahb_writel(val, addr);
++	} else {
++		val = bmc_sio_ahb_readl(addr);
++		printf("0x%08x\n", val);
++	}
++	return 0;
++}
+-- 
+2.11.0
+

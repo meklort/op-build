@@ -1,0 +1,31 @@
+From b5c1ae3ed01d5a479e3bdb71c49c2133db859fde Mon Sep 17 00:00:00 2001
+From: Raptor Engineering Development Team <support@raptorengineering.com>
+Date: Sun, 25 Mar 2018 14:57:49 -0500
+Subject: [PATCH 4/8] Mark all partitions except full PNOR and boot kernel
+ firmware read only
+
+---
+ core/flash.c | 7 +++++++
+ 1 file changed, 7 insertions(+)
+
+diff --git a/core/flash.c b/core/flash.c
+index 80f003aa..84a864a9 100644
+--- a/core/flash.c
++++ b/core/flash.c
+@@ -393,6 +393,13 @@ static struct dt_node *flash_add_dt_node(struct flash *flash, int id)
+ 		partition_node = dt_new_addr(partition_container_node, "partition", ffs_part_start);
+ 		dt_add_property_strings(partition_node, "label", name);
+ 		dt_add_property_cells(partition_node, "reg", ffs_part_start, ffs_part_size);
++		if (part_name_map[i].id != RESOURCE_ID_KERNEL_FW) {
++			/* Mark all partitions other than the full PNOR and the boot kernel
++			 * firmware as read only.  These two partitions are the only partitions
++			 * that are properly erase block aligned at this time.
++			 */
++			dt_add_property(partition_node, "read-only", NULL, 0);
++		}
+ 	}
+ 
+ 	partition_node = dt_new_addr(partition_container_node, "partition", 0);
+-- 
+2.11.0
+

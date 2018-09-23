@@ -1,0 +1,63 @@
+From 0bda69bbbd04b8f29c9c0b5ddcc688d8037c3312 Mon Sep 17 00:00:00 2001
+From: Raptor Engineering Development Team <support@raptorengineering.com>
+Date: Fri, 5 Jan 2018 12:14:49 -0600
+Subject: [PATCH 1/5] Allow CVPD image skip on POWER9
+
+---
+ create_pnor_image.pl |  2 +-
+ update_image.pl      | 12 ++++++++++--
+ 2 files changed, 11 insertions(+), 3 deletions(-)
+
+diff --git a/create_pnor_image.pl b/create_pnor_image.pl
+index bf3bb7d..04f97ac 100755
+--- a/create_pnor_image.pl
++++ b/create_pnor_image.pl
+@@ -137,7 +137,6 @@ $build_pnor_command .= " --binFile_BOOTKERNEL $bootkernel";
+ $build_pnor_command .= " --binFile_NVRAM $scratch_dir/nvram.bin";
+ $build_pnor_command .= " --binFile_MVPD $scratch_dir/mvpd_fill.bin.ecc";
+ $build_pnor_command .= " --binFile_DJVPD $scratch_dir/djvpd_fill.bin.ecc";
+-$build_pnor_command .= " --binFile_CVPD $scratch_dir/cvpd.bin.ecc";
+ $build_pnor_command .= " --binFile_ATTR_TMP $scratch_dir/attr_tmp.bin.ecc";
+ $build_pnor_command .= " --binFile_OCC $occ_binary_filename.ecc";
+ $build_pnor_command .= " --binFile_ATTR_PERM $scratch_dir/attr_perm.bin.ecc";
+@@ -153,6 +152,7 @@ if ($release eq "p9"){
+     $build_pnor_command .= " --binFile_HDAT $hdat_binary_filename" if -e $hdat_binary_filename;
+ }
+ if ($release eq "p8"){
++    $build_pnor_command .= " --binFile_CVPD $scratch_dir/cvpd.bin.ecc";
+     $build_pnor_command .= " --binFile_SBEC $scratch_dir/$sbec_binary_filename";
+     $build_pnor_command .= " --binFile_WINK $scratch_dir/$wink_binary_filename";
+ } else {
+diff --git a/update_image.pl b/update_image.pl
+index a8bafc0..f40f26b 100755
+--- a/update_image.pl
++++ b/update_image.pl
+@@ -264,8 +264,6 @@ sub processConvergedSections {
+     $sections{BOOTKERNEL}{out}  = "$scratch_dir/$bootkernel_filename";
+     $sections{CAPP}{in}         = "$capp_binary_filename";
+     $sections{CAPP}{out}        = "$scratch_dir/cappucode.bin.ecc";
+-    $sections{CVPD}{in}         = "$hb_binary_dir/cvpd.bin";
+-    $sections{CVPD}{out}        = "$scratch_dir/cvpd.bin.ecc";
+     $sections{VERSION}{in}      = "$openpower_version_filename";
+     $sections{VERSION}{out}     = "$openpower_version_filename";
+     $sections{IMA_CATALOG}{in}  = "$ima_catalog_binary_filename";
+@@ -317,6 +315,16 @@ sub processConvergedSections {
+     }
+     $sections{HDAT}{out}       = "$scratch_dir/hdat.bin.ecc";
+ 
++    if(-e "$hb_binary_dir/cvpd.bin")
++    {
++        $sections{CVPD}{in} = "$hb_binary_dir/cvpd.bin";
++    }
++    else
++    {
++        print "WARNING: CVPD partition is not found, including blank binary instead\n";
++    }
++    $sections{CVPD}{out}    = "$scratch_dir/cvpd.bin.ecc";
++
+     # Build up the system bin files specification
+     my $system_bin_files;
+     foreach my $section (keys %sections)
+-- 
+2.11.0
+

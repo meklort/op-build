@@ -1,0 +1,53 @@
+From 7da47856e74e8357dc14e9280493fa22060a2d93 Mon Sep 17 00:00:00 2001
+From: Raptor Engineering Development Team <support@raptorengineering.com>
+Date: Mon, 22 Jan 2018 16:23:11 -0600
+Subject: [PATCH 2/8] Signal skiboot completion to BMC when done
+
+---
+ core/init.c   | 10 ++++++++++
+ include/ast.h |  1 +
+ 2 files changed, 11 insertions(+)
+
+diff --git a/core/init.c b/core/init.c
+index 3b887a24..b73b709a 100644
+--- a/core/init.c
++++ b/core/init.c
+@@ -54,6 +54,7 @@
+ #include <sbe-p9.h>
+ #include <debug_descriptor.h>
+ #include <occ.h>
++#include <ast.h>
+ 
+ enum proc_gen proc_gen;
+ unsigned int pcie_max_link_speed;
+@@ -576,6 +577,15 @@ void __noreturn load_and_boot_kernel(bool is_reboot)
+ 	stdoutp = dt_prop_get_def(dt_chosen, "linux,stdout-path", NULL);
+ 	prlog(PR_DEBUG, "INIT: stdout-path: %s\n", stdoutp ? stdoutp : "");
+ 
++	/* Indicate skiboot done */
++	/* HACK
++	 * Ideally we'd update CFAM 0x283c with a new ISTEP (e.g. 22,0)
++	 * here, but skiboot doesn't seem to have any existing methods
++	 * to access the scratchpad data over FSI.  Instead, we use BMC
++	 * LPC scratch register 0x60 bit 2 (OEM1) to indicate skiboot
++	 * has completed execution.
++	 */
++	ast_ahb_writel(ast_ahb_readl(LPC_BTIMSR) | (0x1 << 2), LPC_BTIMSR);
+ 
+ 	printf("INIT: Starting kernel at 0x%llx, fdt at %p %u bytes\n",
+ 	       kernel_entry, fdt, fdt_totalsize(fdt));
+diff --git a/include/ast.h b/include/ast.h
+index 414ff6a3..50e7dbef 100644
+--- a/include/ast.h
++++ b/include/ast.h
+@@ -36,6 +36,7 @@
+ 
+ /* LPC registers */
+ #define LPC_BASE		0x1e789000
++#define LPC_BTIMSR		(LPC_BASE + 0x60)
+ #define LPC_HICR6		(LPC_BASE + 0x80)
+ #define LPC_HICR7		(LPC_BASE + 0x88)
+ #define LPC_HICR8		(LPC_BASE + 0x8c)
+-- 
+2.11.0
+

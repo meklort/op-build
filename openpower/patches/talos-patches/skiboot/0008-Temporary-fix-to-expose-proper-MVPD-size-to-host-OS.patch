@@ -1,0 +1,32 @@
+From bc106a09b0ab298ec71b3ef8337fb5f820a7c454 Mon Sep 17 00:00:00 2001
+From: Raptor Engineering Development Team <support@raptorengineering.com>
+Date: Wed, 30 May 2018 16:42:12 -0500
+Subject: [PATCH 8/8] Temporary fix to expose proper MVPD size to host OS
+
+---
+ hdata/i2c.c | 9 +++++++++
+ 1 file changed, 9 insertions(+)
+
+diff --git a/hdata/i2c.c b/hdata/i2c.c
+index 9bbec665..bf29fc11 100644
+--- a/hdata/i2c.c
++++ b/hdata/i2c.c
+@@ -300,6 +300,15 @@ int parse_i2c_devs(const struct HDIF_common_hdr *hdr, int idata_index,
+ 		    dev->i2cm_engine == 3) {
+ 			compat = "spd";
+ 			name = "eeprom";
++		} else if (proc_gen == proc_gen_p9 && dev->type == 0x2 &&
++		    dev->i2cm_engine == 1 && dev->i2cm_port == 0) {
++			/* HACK
++			 * Module VPD is 64k, not 16k
++			 * Hostboot is only indicating generic VPD type here
++			 * Override to the 64k at24 part
++			 */
++			compat = "atmel,24c512";
++			name = "eeprom";
+ 		} else if (type) {
+ 			compat = type->compat;
+ 			name = type->name;
+-- 
+2.11.0
+

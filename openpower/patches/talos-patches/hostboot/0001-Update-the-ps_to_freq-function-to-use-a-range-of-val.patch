@@ -1,0 +1,91 @@
+From fce3f3b362e4a1d9eeee7de3e02dc20215b14cae Mon Sep 17 00:00:00 2001
+From: Evan Lojewski <github@meklort.com>
+Date: Sun, 8 Apr 2018 13:03:21 -0600
+Subject: [PATCH 1/2] Update the ps_to_freq function to use a range of values
+ instead of expecting an exact value. Adjust the 2133 and 1866 values to be
+ larger thatn the expected JEDEC value by 1 in order to handel possible
+ rounding issues with the SPD data.
+
+This cahnge was tested with the M393A1G40DB0-CPB RAM module which
+was rejected by the previous code due to the time_in_ps being 938
+instead of the previously expected value of 937.
+
+Memtester was run with the resulting configuration and shows no errors:
+/ # /usr/sbin/memtester  6G 4
+memtester version 4.3.0 (64-bit)
+Copyright (C) 2001-2012 Charles Cazabon.
+Licensed under the GNU General Public License version 2 (only).
+
+pagesize is 65536
+pagesizemask is 0xffffffffffff0000
+want 6144MB (6442450944 bytes)
+got  6144MB (6442450944 bytes), trying mlock ...locked.
+Loop 1/4:
+  Stuck Address       : ok
+  Random Value        : ok
+  Compare XOR         : ok
+  Compare SUB         : ok
+  Compare MUL         : ok
+  Compare DIV         : ok
+  Compare OR          : ok
+  Compare AND         : ok
+  Sequential Increment: ok
+  Solid Bits          : ok
+  Block Sequential    : ok
+  Checkerboard        : ok
+  Bit Spread          : ok
+  Bit Flip            : ok
+  Walking Ones        : ok
+  Walking Zeroes      : ok
+  8-bit Writes        : ok
+  16-bit Writes       : ok
+
+Signed-off-by: Evan Lojewski <github@meklort.com>
+---
+ .../procedures/hwp/memory/lib/utils/conversions.H  | 29 ++++++----------------
+ 1 file changed, 8 insertions(+), 21 deletions(-)
+
+diff --git a/src/import/chips/p9/procedures/hwp/memory/lib/utils/conversions.H b/src/import/chips/p9/procedures/hwp/memory/lib/utils/conversions.H
+index b18eb9b50..14c10934b 100644
+--- a/src/import/chips/p9/procedures/hwp/memory/lib/utils/conversions.H
++++ b/src/import/chips/p9/procedures/hwp/memory/lib/utils/conversions.H
+@@ -130,28 +130,15 @@ inline fapi2::ReturnCode freq_to_ps(const T i_speed_grade, OT& o_tCK_in_ps )
+ template<typename T, typename OT>
+ fapi2::ReturnCode ps_to_freq(const T i_time_in_ps, OT& o_speed_grade)
+ {
+-    switch(i_time_in_ps)
++    if(i_time_in_ps <= 750)         o_speed_grade = fapi2::ENUM_ATTR_MSS_FREQ_MT2666; // Ram is at least as fast as 2666MT/s
++    else if(i_time_in_ps <= 833)    o_speed_grade = fapi2::ENUM_ATTR_MSS_FREQ_MT2400; // Ram is at least as fast as 2400MT/s
++    else if(i_time_in_ps <= 938)    o_speed_grade = fapi2::ENUM_ATTR_MSS_FREQ_MT2133; // Ram is at least as fast as 2133MT/s
++    else if(i_time_in_ps <= 1072)   o_speed_grade = fapi2::ENUM_ATTR_MSS_FREQ_MT1866; // Ram is at least as fast as 1866MT/s
++    else
+     {
+-        case 750:
+-            o_speed_grade = fapi2::ENUM_ATTR_MSS_FREQ_MT2666;
+-            break;
+-
+-        case 833:
+-            o_speed_grade = fapi2::ENUM_ATTR_MSS_FREQ_MT2400;
+-            break;
+-
+-        case 937:
+-            o_speed_grade = fapi2::ENUM_ATTR_MSS_FREQ_MT2133;
+-            break;
+-
+-        case 1071:
+-            o_speed_grade = fapi2::ENUM_ATTR_MSS_FREQ_MT1866;
+-            break;
+-
+-        default:
+-            FAPI_ERR("Invalid clock period (tCK) - %d - provided", i_time_in_ps);
+-            return fapi2::FAPI2_RC_INVALID_PARAMETER;
+-            break;
++        // Ram is too slow.
++        FAPI_ERR("Invalid clock period (tCK) - %d - provided", i_time_in_ps);
++        return fapi2::FAPI2_RC_INVALID_PARAMETER;
+     }
+ 
+     return fapi2::FAPI2_RC_SUCCESS;
+-- 
+2.11.0
+

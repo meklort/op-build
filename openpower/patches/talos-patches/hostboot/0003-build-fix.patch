@@ -1,0 +1,12 @@
+diff --git a/src/include/usr/isteps/istep09list.H b/src/include/usr/isteps/istep09list.H
+index 4adcc0810..6917499af 100644
+--- a/src/include/usr/isteps/istep09list.H
++++ b/src/include/usr/isteps/istep09list.H
+@@ -232,6 +232,7 @@ const DepModInfo  g_istep09Dependancies = {
+         DEP_LIB(libnestmemutils.so),
+         DEP_LIB(libfab_iovalid.so),
+         DEP_LIB(libimageprocs.so),
++        DEP_LIB(libnode_comm.so),
+         NULL
+     }
+ };

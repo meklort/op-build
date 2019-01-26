@@ -1,12 +1,11 @@
-From fce3f3b362e4a1d9eeee7de3e02dc20215b14cae Mon Sep 17 00:00:00 2001
+From f2792da9bcf508cead0728a918546fa768bed6ab Mon Sep 17 00:00:00 2001
 From: Evan Lojewski <github@meklort.com>
-Date: Sun, 8 Apr 2018 13:03:21 -0600
-Subject: [PATCH 1/2] Update the ps_to_freq function to use a range of values
- instead of expecting an exact value. Adjust the 2133 and 1866 values to be
- larger thatn the expected JEDEC value by 1 in order to handel possible
- rounding issues with the SPD data.
+Date: Sat, 26 Jan 2019 11:06:13 -0700
+Subject: [PATCH] Add additional 2133 and 1866 values to be  larger thatn the
+ expected JEDEC value by 1 in order to handel possible  rounding issues with
+ the SPD data.
 
-This cahnge was tested with the M393A1G40DB0-CPB RAM module which
+This change was tested with the M393A1G40DB0-CPB RAM module which
 was rejected by the previous code due to the time_in_ps being 938
 instead of the previously expected value of 937.
 
@@ -42,50 +41,23 @@ Loop 1/4:
 
 Signed-off-by: Evan Lojewski <github@meklort.com>
 ---
- .../procedures/hwp/memory/lib/utils/conversions.H  | 29 ++++++----------------
- 1 file changed, 8 insertions(+), 21 deletions(-)
+ src/import/generic/memory/lib/utils/conversions.H | 2 ++
+ 1 file changed, 2 insertions(+)
 
-diff --git a/src/import/chips/p9/procedures/hwp/memory/lib/utils/conversions.H b/src/import/chips/p9/procedures/hwp/memory/lib/utils/conversions.H
-index b18eb9b50..14c10934b 100644
---- a/src/import/chips/p9/procedures/hwp/memory/lib/utils/conversions.H
-+++ b/src/import/chips/p9/procedures/hwp/memory/lib/utils/conversions.H
-@@ -130,28 +130,15 @@ inline fapi2::ReturnCode freq_to_ps(const T i_speed_grade, OT& o_tCK_in_ps )
- template<typename T, typename OT>
- fapi2::ReturnCode ps_to_freq(const T i_time_in_ps, OT& o_speed_grade)
+diff --git a/src/import/generic/memory/lib/utils/conversions.H b/src/import/generic/memory/lib/utils/conversions.H
+index efbb53a47..b548a70c1 100644
+--- a/src/import/generic/memory/lib/utils/conversions.H
++++ b/src/import/generic/memory/lib/utils/conversions.H
+@@ -88,7 +88,9 @@ static const std::vector<std::pair<uint64_t, uint64_t>> FREQ_TO_CLOCK_PERIOD =
  {
--    switch(i_time_in_ps)
-+    if(i_time_in_ps <= 750)         o_speed_grade = fapi2::ENUM_ATTR_MSS_FREQ_MT2666; // Ram is at least as fast as 2666MT/s
-+    else if(i_time_in_ps <= 833)    o_speed_grade = fapi2::ENUM_ATTR_MSS_FREQ_MT2400; // Ram is at least as fast as 2400MT/s
-+    else if(i_time_in_ps <= 938)    o_speed_grade = fapi2::ENUM_ATTR_MSS_FREQ_MT2133; // Ram is at least as fast as 2133MT/s
-+    else if(i_time_in_ps <= 1072)   o_speed_grade = fapi2::ENUM_ATTR_MSS_FREQ_MT1866; // Ram is at least as fast as 1866MT/s
-+    else
-     {
--        case 750:
--            o_speed_grade = fapi2::ENUM_ATTR_MSS_FREQ_MT2666;
--            break;
--
--        case 833:
--            o_speed_grade = fapi2::ENUM_ATTR_MSS_FREQ_MT2400;
--            break;
--
--        case 937:
--            o_speed_grade = fapi2::ENUM_ATTR_MSS_FREQ_MT2133;
--            break;
--
--        case 1071:
--            o_speed_grade = fapi2::ENUM_ATTR_MSS_FREQ_MT1866;
--            break;
--
--        default:
--            FAPI_ERR("Invalid clock period (tCK) - %d - provided", i_time_in_ps);
--            return fapi2::FAPI2_RC_INVALID_PARAMETER;
--            break;
-+        // Ram is too slow.
-+        FAPI_ERR("Invalid clock period (tCK) - %d - provided", i_time_in_ps);
-+        return fapi2::FAPI2_RC_INVALID_PARAMETER;
-     }
- 
-     return fapi2::FAPI2_RC_SUCCESS;
+     {DIMM_SPEED_1600, 1250}, // DDR4
+     {DIMM_SPEED_1866, 1071}, // DDR4
++    {DIMM_SPEED_1866, 1072}, // DDR4 - rounding error.
+     {DIMM_SPEED_2133,  937}, // DDR4
++    {DIMM_SPEED_2133,  938}, // DDR4 - rounding error.
+     {DIMM_SPEED_2400,  833}, // DDR4
+     {DIMM_SPEED_2666,  750}, // DDR4
+     {DIMM_SPEED_2933,  682}, // DDR4
 -- 
-2.11.0
+2.17.2
 

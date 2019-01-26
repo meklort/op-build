@@ -1,0 +1,30 @@
+From 5cb42733aa994eb9001188231fbd2f39b682d350 Mon Sep 17 00:00:00 2001
+From: Evan Lojewski <github@meklort.com>
+Date: Sat, 26 Jan 2019 16:15:34 -0700
+Subject: [PATCH] Add 1.8MB BOOTKERNFW partition
+
+Signed-off-by: Evan Lojewski <github@meklort.com>
+---
+ p9Layouts/defaultPnorLayout_64.xml | 8 ++++++++
+ 1 file changed, 8 insertions(+)
+
+diff --git a/p9Layouts/defaultPnorLayout_64.xml b/p9Layouts/defaultPnorLayout_64.xml
+index 3201662..80e73dc 100644
+--- a/p9Layouts/defaultPnorLayout_64.xml
++++ b/p9Layouts/defaultPnorLayout_64.xml
+@@ -405,4 +405,12 @@ Layout Description
+         <sha512Version/>
+         <readOnly/>
+     </section>
++    <section>
++        <description>Boot kernel firmware data (1.8MB)</description>
++        <eyeCatch>BOOTKERNFW</eyeCatch>
++        <physicalOffset>0x3E10000</physicalOffset>
++        <physicalRegionSize>0x1E0000</physicalRegionSize>
++        <side>sideless</side>
++        <preserved/>
++    </section>
+ </pnor>
+-- 
+2.17.2
+

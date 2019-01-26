@@ -1,0 +1,38 @@
+From 92463bae4c3bdbdbd18c6cd6230de8746f320197 Mon Sep 17 00:00:00 2001
+From: Evan Lojewski <github@meklort.com>
+Date: Sat, 8 Sep 2018 21:48:38 -0600
+Subject: [PATCH] Ensure CVPD has a proper ECC.
+
+This Updates the create_pnor_image.pl script to ensure the ecc version of the CVPD partition is included.
+
+This change ensures that a new pnor image does not report "Clearing section CVPD due to ECC error"
+   after it has been flashed.
+
+Signed-off-by: Evan Lojewski <github@meklort.com>
+---
+ create_pnor_image.pl | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/create_pnor_image.pl b/create_pnor_image.pl
+index 04f97ac..d8e5b78 100755
+--- a/create_pnor_image.pl
++++ b/create_pnor_image.pl
+@@ -145,6 +145,7 @@ $build_pnor_command .= " --binFile_CAPP $scratch_dir/cappucode.bin.ecc";
+ $build_pnor_command .= " --binFile_SECBOOT $scratch_dir/secboot.bin.ecc";
+ $build_pnor_command .= " --binFile_VERSION $openpower_version_filename";
+ $build_pnor_command .= " --binFile_IMA_CATALOG $scratch_dir/ima_catalog.bin.ecc";
++$build_pnor_command .= " --binFile_CVPD $scratch_dir/cvpd.bin.ecc";
+ 
+ if ($release eq "p9"){
+     $build_pnor_command .= " --binFile_WOFDATA $wofdata_binary_filename" if -e $wofdata_binary_filename;
+@@ -152,7 +153,6 @@ if ($release eq "p9"){
+     $build_pnor_command .= " --binFile_HDAT $hdat_binary_filename" if -e $hdat_binary_filename;
+ }
+ if ($release eq "p8"){
+-    $build_pnor_command .= " --binFile_CVPD $scratch_dir/cvpd.bin.ecc";
+     $build_pnor_command .= " --binFile_SBEC $scratch_dir/$sbec_binary_filename";
+     $build_pnor_command .= " --binFile_WINK $scratch_dir/$wink_binary_filename";
+ } else {
+-- 
+2.13.6 (Apple Git-96)
+

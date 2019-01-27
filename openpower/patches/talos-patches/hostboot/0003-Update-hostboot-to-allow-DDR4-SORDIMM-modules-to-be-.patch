@@ -1,0 +1,76 @@
+From e53cc0660f7a0297406fff7a43c6a2334d778ffc Mon Sep 17 00:00:00 2001
+From: Evan Lojewski <github@meklort.com>
+Date: Sat, 26 Jan 2019 22:31:44 -0700
+Subject: [PATCH] Update hostboot to allow DDR4-SORDIMM modules to be used
+ [2/2].
+
+Add support for the module type in the SPD parser.
+This change has been tested with the VR9FR2G7228JBKSBD4 module
+    from Viking Technologies: 2666MHz DDR4-SORDIMM, rank 2, 16GB
+
+Note: Above mentioned module need an additional patch due to an
+    unexpected SPD manufacturer being detected.
+
+Signed-off-by: Evan Lojewski <github@meklort.com>
+---
+ src/import/chips/p9/procedures/hwp/memory/lib/spd/spd_factory.C | 2 ++
+ src/import/generic/memory/lib/spd/spd_checker.H                 | 2 ++
+ src/import/generic/memory/lib/spd/spd_factory_pattern.C         | 2 ++
+ src/import/generic/memory/lib/utils/shared/mss_generic_consts.H | 2 ++
+ 4 files changed, 8 insertions(+)
+
+diff --git a/src/import/chips/p9/procedures/hwp/memory/lib/spd/spd_factory.C b/src/import/chips/p9/procedures/hwp/memory/lib/spd/spd_factory.C
+index 70904130f..37542ebf6 100644
+--- a/src/import/chips/p9/procedures/hwp/memory/lib/spd/spd_factory.C
++++ b/src/import/chips/p9/procedures/hwp/memory/lib/spd/spd_factory.C
+@@ -97,6 +97,8 @@ fapi2::ReturnCode raw_card_factory(const fapi2::Target<TARGET_TYPE_DIMM>& i_targ
+     switch(l_dimm_type)
+     {
+         case RDIMM:
++        case SORDIMM:
++        case MINIRDIMM:
+ 
+             // TODO:RTC178807 - Update how NVDIMMs are handled once more are up and running in the lab
+             // NVDIMM is currently considered differently than all other rdimm raw cards, due to settings differences
+diff --git a/src/import/generic/memory/lib/spd/spd_checker.H b/src/import/generic/memory/lib/spd/spd_checker.H
+index d393a83e7..ef4b8e0bf 100644
+--- a/src/import/generic/memory/lib/spd/spd_checker.H
++++ b/src/import/generic/memory/lib/spd/spd_checker.H
+@@ -185,6 +185,8 @@ static inline bool is_dimm_type_valid(const uint8_t i_dimm_type)
+     {
+         case RDIMM:
+         case LRDIMM:
++        case SORDIMM:
++        case MINIRDIMM:
+             l_result = true;
+             break;
+ 
+diff --git a/src/import/generic/memory/lib/spd/spd_factory_pattern.C b/src/import/generic/memory/lib/spd/spd_factory_pattern.C
+index de873fe0d..564d3e9df 100644
+--- a/src/import/generic/memory/lib/spd/spd_factory_pattern.C
++++ b/src/import/generic/memory/lib/spd/spd_factory_pattern.C
+@@ -295,6 +295,8 @@ fapi2::ReturnCode factories::dimm_module_select_param(parameters& o_param) const
+     switch(iv_dimm_type)
+     {
+         case RDIMM:
++        case SORDIMM:
++        case MINIRDIMM:
+             o_param = RDIMM_MODULE;
+             break;
+ 
+diff --git a/src/import/generic/memory/lib/utils/shared/mss_generic_consts.H b/src/import/generic/memory/lib/utils/shared/mss_generic_consts.H
+index 25d4c5c37..72cdcefcf 100644
+--- a/src/import/generic/memory/lib/utils/shared/mss_generic_consts.H
++++ b/src/import/generic/memory/lib/utils/shared/mss_generic_consts.H
+@@ -230,6 +230,8 @@ enum dimm_type
+ {
+     RDIMM = 0b0001,
+     LRDIMM = 0b0100,
++    SORDIMM = 0b1000,
++    MINIRDIMM = 0b1001,
+ };
+ 
+ enum guard_band : uint16_t
+-- 
+2.17.2
+
